@@ -1,0 +1,35 @@
+{
+  "name": "workerframe",
+  "main": "workerframe.js",
+  "version": "0.1.0",
+  "authors": [
+    "knowledgecode <knowledgecode@gmail.com>"
+  ],
+  "description": "a tiny framework for Web Workers",
+  "homepage": "https://github.com/knowledgecode/workerframe",
+  "repository": {
+      "type": "git",
+      "url": "git@github.com:knowledgecode/workerframe.git"
+  },
+  "moduleType": [
+    "globals"
+  ],
+  "keywords": [
+    "Web Worker",
+    "Web Workers",
+    "worker",
+    "framework"
+  ],
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "bower_components",
+    "compile",
+    "server.js",
+    "test"
+  ],
+  "devDependencies": {
+    "mocha": "~2.2.4",
+    "should": "~5.2.0"
+  }
+}

@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1, maximum-scale=1">
+    <link rel="stylesheet" href="../bower_components/mocha/mocha.css">
+    <title>Worker Frame</title>
+  </head>
+  <body>
+    <div id="mocha"></div>
+    <script src="../bower_components/mocha/mocha.js"></script>
+    <script src="../bower_components/should/should.min.js"></script>
+    <script src="WebConsole.js"></script>
+    <script>
+      if (window.callPhantom) {
+        mocha.setup({ ui: 'bdd', reporter: WebConsole });
+      } else {
+        mocha.setup('bdd');
+      }
+    </script>
+    <script src="../workerframe.js"></script>
+    <script src="test.js"></script>
+    <script>
+      mocha.run(function (failure) {
+        if (window.callPhantom) {
+          callPhantom(failure);
+        }
+      });
+    </script>
+  </body>
+</html>

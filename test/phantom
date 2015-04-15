@@ -1,0 +1,10 @@
+#!/bin/sh
+
+set -eu
+
+dir=`dirname $0`
+node ${dir}/../server.js &
+pid=$!
+
+trap 'kill $pid' EXIT INT
+phantomjs ${dir}/runner.js
