@@ -24,6 +24,7 @@
   "ignore": [
     "**/.*",
     "bower_components",
+    "circle.yml",
     "compile",
     "server.js",
     "test"
