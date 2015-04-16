@@ -1,7 +1,7 @@
 {
   "name": "workerframe",
   "main": "workerframe.js",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "authors": [
     "knowledgecode <knowledgecode@gmail.com>"
   ],
@@ -12,7 +12,8 @@
       "url": "git@github.com:knowledgecode/workerframe.git"
   },
   "moduleType": [
-    "globals"
+    "globals",
+    "amd"
   ],
   "keywords": [
     "Web Worker",
