@@ -1,3 +1,7 @@
+/**
+ * @preserve workerframe (c) 2015 KNOWLEDGECODE | MIT
+ */
+/*global define */
 (function (w) {
     'use strict';
 
@@ -146,5 +150,13 @@
 
     WorkerFrame.prototype = new WorkerFramePrototype();
     WorkerFrame.prototype.constructor = WorkerFrame;
-    w.WorkerFrame = WorkerFrame;
+
+    if (typeof define === 'function' && define.amd) {
+        define([], function () {
+            return WorkerFrame;
+        });
+    } else {
+        w.WorkerFrame = WorkerFrame;
+    }
+
 }(this));
