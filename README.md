@@ -1,10 +1,10 @@
-# Worker Frame [![Circle CI](https://circleci.com/gh/knowledgecode/workerframe.svg?style=svg)](https://circleci.com/gh/knowledgecode/workerframe)
+# Worker Frame [![Circle CI](https://circleci.com/gh/knowledgecode/workerframe.svg?style=shield)](https://circleci.com/gh/knowledgecode/workerframe)
 This is a tiny framework for Web Workers.  
 
 ## Features
-- can describe workers in a same file  
-- can transmit and receive messages by type  
-- can use console.log in workers (will help with debugging)  
+- be able to wtite workers in a same file  
+- be able to transmit and receive messages by type  
+- be able to use console.log in workers (will help with debugging)  
 
 ## Install
 ``` html
