@@ -1,7 +1,6 @@
 /**
  * @preserve workerframe (c) 2015 KNOWLEDGECODE | MIT
  */
-/*global define */
 (function (w) {
     'use strict';
 
@@ -26,6 +25,7 @@
             frame = function (_origin, _pathname, _fn) {
                 var s = self, _l = {}, importScripts = s.importScripts, slice = Array.prototype.slice;
 
+                s.origin = _origin;
                 s.importScripts = function () {
                     slice.call(arguments).map(function (script) {
                         importScripts((function (url) {
