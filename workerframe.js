@@ -26,29 +26,6 @@
                 var s = self, _l = {}, importScripts = s.importScripts, slice = Array.prototype.slice;
 
                 s.origin = _origin;
-                s.importScripts = function () {
-                    slice.call(arguments).map(function (script) {
-                        importScripts((function (url) {
-                            var pathname = _pathname;
-
-                            if (/^(https?|file):\/\//.test(url)) {
-                                return url;
-                            }
-                            if (/^\.{1,2}\//.test(url)) {
-                                while (url.indexOf('../') === 0) {
-                                    url = url.slice(3);
-                                    pathname = pathname.replace(/\/[^\/]*\/?$/, '/');
-                                }
-                                while (url.indexOf('./') === 0) {
-                                    url = url.slice(2);
-                                }
-                            } else if (url.indexOf('/') === 0) {
-                                pathname = '';
-                            }
-                            return _origin + pathname + url;
-                        }(script)));
-                    });
-                };
                 s.message = function (type, data, transferList) {
                     postMessage({ _type: type, _data: data }, transferList);
                 };
