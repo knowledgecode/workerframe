@@ -1,12 +1,12 @@
 /**
  * @preserve workerframe (c) 2015 KNOWLEDGECODE | MIT
  */
-(function (w) {
+(function (g) {
     'use strict';
 
-    var URL = w.URL || w.webkitURL,
+    var URL = g.URL || g.webkitURL,
         Blob = (function () {
-            var Builder = w.BlobBuilder || w.WebKitBlobBuilder || w.MSBlobBuilder;
+            var Builder = g.BlobBuilder || g.WebKitBlobBuilder || g.MSBlobBuilder;
             if (Builder) {
                 return function (data, contentType) {
                     var blob = new Builder();
@@ -14,7 +14,7 @@
                     return blob.getBlob(contentType.type);
                 };
             }
-            return w.Blob;
+            return g.Blob;
         }()),
         WorkerFrame = function (fn) {
             var frame, blobURL, that = this;
@@ -23,7 +23,16 @@
                 throw new TypeError('Failed to construct \'WorkerFrame\'.');
             }
             frame = function (_origin, _pathname, _fn) {
-                var s = self, _l = {}, slice = Array.prototype.slice;
+                var s = self, _l = {}, _o = {}, slice = Array.prototype.slice,
+                    _on = function (listeners, type, listener) {
+                        var el = listeners[type] || [];
+
+                        if (el.indexOf(listener) < 0) {
+                            el.push(listener);
+                            listeners[type] = el;
+                        }
+                        return listener;
+                    };
 
                 s.origin = _origin;
                 s.message = function (type, data, transferList) {
@@ -35,13 +44,10 @@
                     }
                 };
                 s.on = function (type, listener) {
-                    var el = _l[type] || [];
-
-                    if (el.indexOf(listener) < 0) {
-                        el.push(listener);
-                        _l[type] = el;
-                    }
-                    return listener;
+                    return _on(_l, type, listener);
+                };
+                s.one = function (type, listener) {
+                    return _on(_o, type, listener);
                 };
                 s.off = function (type, listener) {
                     var i, el = _l[type] || [];
@@ -58,6 +64,10 @@
                         (_l[type] || []).map(function (el) {
                             el(data);
                         });
+                        (_o[type] || []).map(function (el) {
+                            el(data);
+                        });
+                        delete _o[type];
                         if (type === 'close') {
                             s.close();
                             s.message('_c');
@@ -74,6 +84,7 @@
                 .replace('%s', fn.toString())
             ], { type: 'text/javascript' }));
             this._l = {};
+            this._o = {};
             this._w = new Worker(blobURL);
             this._w.addEventListener('message', function (evt) {
                 var type = evt.data._type, data = evt.data._data;
@@ -95,6 +106,16 @@
             });
         },
         WorkerFramePrototype = function () {
+            var _on = function (listeners, type, listener) {
+                var el = listeners[type] || [];
+
+                if (el.indexOf(listener) < 0) {
+                    el.push(listener);
+                    listeners[type] = el;
+                }
+                return listener;
+            };
+
             this.message = function (type, data, transferList) {
                 this._w.postMessage({ _type: type, _data: data }, transferList);
             };
@@ -102,13 +123,10 @@
                 this.message('close');
             };
             this.on = function (type, listener) {
-                var el = this._l[type] || [];
-
-                if (el.indexOf(listener) < 0) {
-                    el.push(listener);
-                    this._l[type] = el;
-                }
-                return listener;
+                return _on(this._l, type, listener);
+            };
+            this.one = function (type, listener) {
+                return _on(this._o, type, listener);
             };
             this.off = function (type, listener) {
                 var i, el = this._l[type] || [];
@@ -122,6 +140,10 @@
                 (this._l[type] || []).map(function (el) {
                     el(data);
                 });
+                (this._o[type] || []).map(function (el) {
+                    el(data);
+                });
+                delete this._o[type];
             };
         };
 
@@ -133,7 +155,8 @@
             return WorkerFrame;
         });
     } else {
-        w.WorkerFrame = WorkerFrame;
+        g.WorkerFrame = WorkerFrame;
     }
 
 }(this));
+
