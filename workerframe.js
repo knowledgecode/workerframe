@@ -23,7 +23,7 @@
                 throw new TypeError('Failed to construct \'WorkerFrame\'.');
             }
             frame = function (_origin, _pathname, _fn) {
-                var s = self, _l = {}, importScripts = s.importScripts, slice = Array.prototype.slice;
+                var s = self, _l = {}, slice = Array.prototype.slice;
 
                 s.origin = _origin;
                 s.message = function (type, data, transferList) {
