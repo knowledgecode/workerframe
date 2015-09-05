@@ -22,7 +22,7 @@
             if (this === window || typeof fn !== 'function') {
                 throw new TypeError('Failed to construct \'WorkerFrame\'.');
             }
-            frame = function (_origin, _pathname, _fn) {
+            frame = function (_origin, _fn) {
                 var s = self, _l = {}, _o = {}, slice = Array.prototype.slice,
                     _on = function (listeners, type, listener) {
                         var el = listeners[type] || [];
@@ -77,10 +77,9 @@
                 _fn();
             };
             blobURL = URL.createObjectURL(new Blob([
-                '(%s(\'%s\', \'%s\', %s));'
+                '(%s(\'%s\', %s));'
                 .replace('%s', frame.toString())
                 .replace('%s', location.origin.replace('null', 'file://'))
-                .replace('%s', location.pathname.replace(/\/[^\/]*$/, '/'))
                 .replace('%s', fn.toString())
             ], { type: 'text/javascript' }));
             this._l = {};
