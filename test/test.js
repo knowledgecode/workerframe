@@ -1,11 +1,34 @@
-/*global WorkerFrame, Uint8Array */
+/*global WorkerFrame */
 (function () {
     'use strict';
 
     describe('Worker Frame', function () {
-        it('basic echo', function (done) {
+        it('basic echo once', function (done) {
             var worker = new WorkerFrame(function () {
                 self.on('echo', function (data) {
+                    self.message('echo', data);
+                });
+            });
+
+            // once
+            worker.one('echo', function (data) {
+                try {
+                    data.should.be.equal('hello world!');
+                    worker.message('echo', 'hello world again!');
+                } catch (e) {
+                    done(e);
+                }
+                setTimeout(function () {
+                    done();
+                }, 100);
+            });
+            worker.message('echo', 'hello world!');
+        });
+
+        it('basic echo once in worker', function (done) {
+            var worker = new WorkerFrame(function () {
+                // once
+                self.one('echo', function (data) {
                     self.message('echo', data);
                 });
             });
@@ -13,12 +36,40 @@
             worker.on('echo', function (data) {
                 try {
                     data.should.be.equal('hello world!');
+                    worker.message('echo', 'hello world again!');
+                } catch (e) {
+                    done(e);
+                }
+                setTimeout(function () {
                     done();
+                }, 100);
+            });
+            worker.message('echo', 'hello world!');
+        });
+
+        it('basic echo more than once', function (done) {
+            var worker = new WorkerFrame(function () {
+                self.on('echo', function (data) {
+                    self.message('echo', data);
+                });
+            });
+            var msg = 'hello world!';
+
+            worker.on('echo', function (data) {
+                try {
+                    data.should.be.equal(msg);
+                    if (msg === 'hello world!') {
+                        msg = 'hello world again!';
+                    } else {
+                        done();
+                        return;
+                    }
+                    worker.message('echo', msg);
                 } catch (e) {
                     done(e);
                 }
             });
-            worker.message('echo', 'hello world!');
+            worker.message('echo', msg);
         });
 
         it('closable', function (done) {
@@ -60,7 +111,7 @@
             worker.close();
         });
 
-        it('canceling events', function (done) {
+        it('canceling an event', function (done) {
             var worker = new WorkerFrame(function () {
                 self.on('echo', function (data) {
                     self.message('echo', data);
@@ -82,7 +133,37 @@
             }, 100);
         });
 
-        it('canceling events in a workerframe', function (done) {
+        it('canceling all events', function (done) {
+            var worker = new WorkerFrame(function () {
+                self.on('echo', function (data) {
+                    self.message('echo', data);
+                });
+            });
+            var handler1 = function (data) {
+                    try {
+                        data.should.not.be.equal('hello world!');
+                    } catch (e) {
+                        done(e);
+                    }
+                },
+                handler2 = function (data) {
+                    try {
+                        data.should.be.equal('hello world again!');
+                    } catch (e) {
+                        done(e);
+                    }
+                };
+
+            worker.on('echo', handler1);
+            worker.on('echo', handler2);
+            worker.off('echo');
+            worker.message('echo', 'hello world!');
+            setTimeout(function () {
+                done();
+            }, 100);
+        });
+
+        it('canceling an event in worker', function (done) {
             var worker = new WorkerFrame(function () {
                 var handler;
 
@@ -90,6 +171,33 @@
                     self.message('echo', data);
                 });
                 self.off('echo', handler);
+            });
+
+            worker.on('echo', function (data) {
+                try {
+                    data.should.not.be.equal('hello world!');
+                } catch (e) {
+                    done(e);
+                }
+            });
+            worker.message('echo', 'hello world!');
+            setTimeout(function () {
+                done();
+            }, 100);
+        });
+
+        it('canceling all events in worker', function (done) {
+            var worker = new WorkerFrame(function () {
+                var handler1 = function (data) {
+                        self.message('echo', data);
+                    },
+                    handler2 = function (data) {
+                        self.message('echo', data);
+                    };
+
+                self.on('echo', handler1);
+                self.on('echo', handler2);
+                self.off('echo');
             });
 
             worker.on('echo', function (data) {
@@ -149,7 +257,7 @@
 
         it('importing a script', function (done) {
             var worker = new WorkerFrame(function () {
-                self.importScripts('add.js');
+                self.importScripts(self.origin + '/test/add.js');
 
                 self.on('add', function (data) {
                     var a = self.add(data.x, data.y);
@@ -168,9 +276,9 @@
             worker.message('add', { x: 16, y: 48 });
         });
 
-        it('importing scripts', function (done) {
+        it('importing a number of script', function (done) {
             var worker = new WorkerFrame(function () {
-                self.importScripts('add.js', 'sub.js');
+                self.importScripts(self.origin + '/test/add.js', self.origin + '/test/sub.js');
 
                 self.on('calc', function (data) {
                     var a = self.add(data.x, data.y);
@@ -223,7 +331,7 @@
 
         it('forgetting "new"', function (done) {
             try {
-                var worker = WorkerFrame(function () {});
+                WorkerFrame(function () {});
                 try {
                     (true).should.be.equal(false);
                 } catch (e) {
@@ -236,7 +344,7 @@
 
         it('no arguments', function (done) {
             try {
-                var worker = new WorkerFrame();
+                var worker = new WorkerFrame(); // eslint-disable-line no-unused-vars
                 try {
                     (true).should.be.equal(false);
                 } catch (e) {
@@ -249,7 +357,7 @@
 
         it('wrong argument type', function (done) {
             try {
-                var worker = new WorkerFrame('test.js');
+                var worker = new WorkerFrame('test.js'); // eslint-disable-line no-unused-vars
                 try {
                     (true).should.be.equal(false);
                 } catch (e) {
@@ -265,7 +373,7 @@
                 throw new Error();
             });
 
-            worker.on('error', function (data) {
+            worker.on('error', function () {
                 done();
             });
             setTimeout(function () {
@@ -275,6 +383,48 @@
                     done(e);
                 }
             }, 100);
+        });
+
+        it('Promise support (success)', function (done) {
+            var worker = new WorkerFrame(function () {
+                self.on('add', function (data, success) {
+                    success(data[0] + data[1]);
+                });
+            });
+
+            Promise.resolve().then(function () {
+                return worker.message('add', [ 2, 3 ]);
+            }).then(function (data) {
+                try {
+                    data.should.be.equal(5);
+                    done();
+                } catch (e) {
+                    done(e);
+                }
+            });
+        });
+
+        it('Promise support (failure)', function (done) {
+            var worker = new WorkerFrame(function () {
+                self.on('odd', function (data, success, failure) {
+                    if (data % 2) {
+                        success(true);
+                    } else {
+                        failure(false);
+                    }
+                });
+            });
+
+            Promise.resolve().then(function () {
+                return worker.message('odd', 2);
+            }).catch(function (data) {
+                try {
+                    data.should.be.equal(false);
+                    done();
+                } catch (e) {
+                    done(e);
+                }
+            });
         });
     });
 
