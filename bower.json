@@ -1,7 +1,7 @@
 {
   "name": "workerframe",
   "main": "workerframe.js",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "authors": [
     "knowledgecode <knowledgecode@gmail.com>"
   ],
@@ -31,6 +31,7 @@
     "test"
   ],
   "devDependencies": {
+    "es6-promise": "~3.0.2",
     "mocha": "~2.2.5",
     "should": "~5.2.0"
   }

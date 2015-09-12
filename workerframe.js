@@ -1,13 +1,12 @@
 /**
  * @preserve workerframe (c) 2015 KNOWLEDGECODE | MIT
  */
-/*global define */
-(function (w) {
+(function (g) {
     'use strict';
 
-    var URL = w.URL || w.webkitURL,
+    var URL = g.URL || g.webkitURL,
         Blob = (function () {
-            var Builder = w.BlobBuilder || w.WebKitBlobBuilder || w.MSBlobBuilder;
+            var Builder = g.BlobBuilder || g.WebKitBlobBuilder || g.MSBlobBuilder;
             if (Builder) {
                 return function (data, contentType) {
                     var blob = new Builder();
@@ -15,7 +14,7 @@
                     return blob.getBlob(contentType.type);
                 };
             }
-            return w.Blob;
+            return g.Blob;
         }()),
         WorkerFrame = function (fn) {
             var frame, blobURL, that = this;
@@ -23,32 +22,31 @@
             if (this === window || typeof fn !== 'function') {
                 throw new TypeError('Failed to construct \'WorkerFrame\'.');
             }
-            frame = function (_origin, _pathname, _fn) {
-                var s = self, _l = {}, importScripts = s.importScripts, slice = Array.prototype.slice;
+            frame = function (_origin, _uid, _fn) {
+                var s = self, _l = {}, _o = {}, slice = Array.prototype.slice,
+                    _on = function (listeners, type, listener) {
+                        var el = listeners[type] || [];
 
-                s.importScripts = function () {
-                    slice.call(arguments).map(function (script) {
-                        importScripts((function (url) {
-                            var pathname = _pathname;
+                        if (el.indexOf(listener) < 0) {
+                            el.push(listener);
+                            listeners[type] = el;
+                        }
+                        return listener;
+                    },
+                    _off = function (listeners, type, listener) {
+                        var i, el = listeners[type] || [];
 
-                            if (/^(https?|file):\/\//.test(url)) {
-                                return url;
+                        if (listener) {
+                            i = el.indexOf(listener);
+                            if (i >= 0) {
+                                el.splice(i, 1);
                             }
-                            if (/^\.{1,2}\//.test(url)) {
-                                while (url.indexOf('../') === 0) {
-                                    url = url.slice(3);
-                                    pathname = pathname.replace(/\/[^\/]*\/?$/, '/');
-                                }
-                                while (url.indexOf('./') === 0) {
-                                    url = url.slice(2);
-                                }
-                            } else if (url.indexOf('/') === 0) {
-                                pathname = '';
-                            }
-                            return _origin + pathname + url;
-                        }(script)));
-                    });
-                };
+                        } else {
+                            delete listeners[type];
+                        }
+                    };
+
+                s.origin = _origin;
                 s.message = function (type, data, transferList) {
                     postMessage({ _type: type, _data: data }, transferList);
                 };
@@ -58,29 +56,29 @@
                     }
                 };
                 s.on = function (type, listener) {
-                    var el = _l[type] || [];
-
-                    if (el.indexOf(listener) < 0) {
-                        el.push(listener);
-                        _l[type] = el;
-                    }
-                    return listener;
+                    return _on(_l, type, listener);
+                };
+                s.one = function (type, listener) {
+                    return _on(_o, type, listener);
                 };
                 s.off = function (type, listener) {
-                    var i, el = _l[type] || [];
-
-                    i = el.indexOf(listener);
-                    if (i >= 0) {
-                        el.splice(i, 1);
-                    }
+                    _off(_l, type, listener);
+                    _off(_o, type, listener);
                 };
                 s.addEventListener('message', function (evt) {
-                    var type = evt.data._type, data = evt.data._data;
+                    var type = evt.data._type, data = evt.data._data,
+                        callback = function (el) {
+                            el(data, function (res) {
+                                s.message(type, { _uid: _uid, _ok: true, _data: res });
+                            }, function (err) {
+                                s.message(type, { _uid: _uid, _ok: false, _data: err });
+                            });
+                        };
 
                     if (type) {
-                        (_l[type] || []).map(function (el) {
-                            el(data);
-                        });
+                        (_l[type] || []).map(callback);
+                        (_o[type] || []).map(callback);
+                        delete _o[type];
                         if (type === 'close') {
                             s.close();
                             s.message('_c');
@@ -89,17 +87,20 @@
                 });
                 _fn();
             };
+            this._uid = Math.random().toString(36).slice(2);
             blobURL = URL.createObjectURL(new Blob([
                 '(%s(\'%s\', \'%s\', %s));'
                 .replace('%s', frame.toString())
                 .replace('%s', location.origin.replace('null', 'file://'))
-                .replace('%s', location.pathname.replace(/\/[^\/]*$/, '/'))
+                .replace('%s', this._uid)
                 .replace('%s', fn.toString())
             ], { type: 'text/javascript' }));
             this._l = {};
+            this._o = {};
+            this._p = {};
             this._w = new Worker(blobURL);
             this._w.addEventListener('message', function (evt) {
-                var type = evt.data._type, data = evt.data._data;
+                var type = (evt.data || {})._type || '', data = (evt.data || {})._data;
 
                 switch (type) {
                 case '_l':
@@ -107,7 +108,9 @@
                     break;
                 case '_c':
                     URL.revokeObjectURL(blobURL);
-                    that._l = that._w = undefined;
+                    that._l = that._o = that._p = that._w = undefined;
+                    break;
+                case '':
                     break;
                 default:
                     that._d(type, data);
@@ -118,33 +121,74 @@
             });
         },
         WorkerFramePrototype = function () {
+            var _on = function (listeners, type, listener) {
+                var el = listeners[type] || [];
+
+                if (el.indexOf(listener) < 0) {
+                    el.push(listener);
+                    listeners[type] = el;
+                }
+                return listener;
+            }, _off = function (listeners, type, listener) {
+                var i, el = listeners[type] || [];
+
+                if (listener) {
+                    i = el.indexOf(listener);
+                    if (i >= 0) {
+                        el.splice(i, 1);
+                    }
+                } else {
+                    delete listeners[type];
+                }
+            };
+
             this.message = function (type, data, transferList) {
+                var that = this,
+                    promise = new Promise(function (resolve, reject) {
+                        _on(that._p, type, function (res) {
+                            if ((res || {})._uid === that._uid) {
+                                if (res._ok) {
+                                    resolve(res._data);
+                                } else {
+                                    reject(res._data);
+                                }
+                            }
+                        });
+                    });
+
                 this._w.postMessage({ _type: type, _data: data }, transferList);
+                return promise;
             };
             this.close = function () {
                 this.message('close');
             };
             this.on = function (type, listener) {
-                var el = this._l[type] || [];
-
-                if (el.indexOf(listener) < 0) {
-                    el.push(listener);
-                    this._l[type] = el;
-                }
-                return listener;
+                return _on(this._l, type, listener);
+            };
+            this.one = function (type, listener) {
+                return _on(this._o, type, listener);
             };
             this.off = function (type, listener) {
-                var i, el = this._l[type] || [];
-
-                i = el.indexOf(listener);
-                if (i >= 0) {
-                    el.splice(i, 1);
-                }
+                _off(this._l, type, listener);
+                _off(this._o, type, listener);
             };
             this._d = function (type, data) {
-                (this._l[type] || []).map(function (el) {
+                var that = this,
+                    callback = function (el) {
+                        if ((data || {})._uid === that._uid) {
+                            el(data._data);
+                        } else {
+                            el(data);
+                        }
+                    };
+
+                (this._l[type] || []).map(callback);
+                (this._o[type] || []).map(callback);
+                delete this._o[type];
+                (this._p[type] || []).map(function (el) {
                     el(data);
                 });
+                delete this._p[type];
             };
         };
 
@@ -156,7 +200,8 @@
             return WorkerFrame;
         });
     } else {
-        w.WorkerFrame = WorkerFrame;
+        g.WorkerFrame = WorkerFrame;
     }
 
 }(this));
+
