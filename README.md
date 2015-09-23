@@ -3,24 +3,24 @@ This is a tiny framework for Web Workers.
 
 ## Features
 - It is possible to write Worker's code in a same file.
-- Both Promise and Callback pattern support.
+- Both EventEmitter and Promise pattern support.
 - It is possible to use console.log in Workers (It will help with debugging).
 - Fast loading (1.2kb gz).
 
-## Install
+## Installation
 ``` html
-<!-- install a Promise polyfill for unsupported browser -->
+<!-- install a Promise polyfill for older browser it is unsupported -->
 <script src="es6-promise.min.js"></script>
 <script src="workerframe.min.js"></script>
 ```
 
 ## Usage
-Callback pattern:
+Example of EventEmitter pattern:
 ```javascript
 var worker = new WorkerFrame(function () {
     // it is executed this code in the worker context >>>
-    self.on('add', function (data) {
-        self.message('answer', data[0] + data[1]);
+    self.bind('add', function (data) {
+        self.emit('answer', data[0] + data[1]);
     });
     // <<< it is executed this code in the worker context
 });
@@ -28,26 +28,25 @@ var worker = new WorkerFrame(function () {
 worker.on('answer', function (data) {
     console.log(data);  // => 48
 });
-worker.message('add', [16, 32]);
+worker.send('add', [16, 32]));
 ```
-If transmit a message to worker via type "foo", the worker can receive it via type "foo". And vice versa.  
 
-Promise pattern:
+Example of Promise pattern:
 ```javascript
 var worker = new WorkerFrame(function () {
     // it is executed this code in the worker context >>>
-    self.on('add', function (data, success, failure) {
-        success(data[0] + data[1];
+    self.bind('add', function (data, success, failure) {
+        success(data[0] + data[1]);
     });
     // <<< it is executed this code in the worker context
 });
 
-worker.message('add', [16, 32])
+worker.send('add', [16, 32])
 .then(function (data) {
     console.log(data);  // => 48
 })
 .catch(function (err) {
-    // If the worker returns something error via failure(), this is called.
+    // If the worker returns something error with failure(), this is called.
 });
 ```
 
@@ -59,8 +58,8 @@ var foo = 'untouchable';
 // It is unable to access values and objects that are out of this function.
 // Note that it works in the worker thread.
 var task = function () {
-    self.on('calc', function (data) {
-        self.message('complete', data.width * data.height);
+    self.bind('calc', function (data, success, failure) {
+        success(data.width * data.height);
     });
 
     // This will cause an error! (Because the `foo` is out of this function.)
@@ -69,12 +68,12 @@ var task = function () {
 
 var worker = new WorkerFrame(task);
 ```
-### `worker.message(type, data[, transferList])`
+### `worker.send(channel[, data[, transferList]])`
 ```javascript
-worker.message('calc', { width: 640, height: 480 });
+worker.send('calc', { width: 640, height: 480 });
 ```
 `transferList` is an optional array of Transferable objects (refer to [here](https://developer.mozilla.org/en-US/docs/Web/API/Transferable)).  
-### `worker.on(type, handler)`
+### `worker.on(type, listener)`
 ```javascript
 var oncomplete = worker.on('complete', function (data) {
     console.log('the task has been completed: ' + data);
@@ -86,11 +85,11 @@ worker.on('error', function (err) {
     console.log(err);
 });
 ```
-### `worker.off(type, handler)`
+### `worker.off(type[, listener])`
 ```javascript
 worker.off('complete', oncomplete);
 ```
-### `worker.one(type, handler)`
+### `worker.one(type, listener)`
 The auto off version of `worker.on`.
 ```javascript
 var oncomplete = worker.one('complete', function (data) {
@@ -99,10 +98,10 @@ var oncomplete = worker.one('complete', function (data) {
 ```
 
 ### `worker.close()`
-Close the worker cleanly (not "abort"). If it is also called this method, it is fired `close` event in the worker before actually closing. You may hook this event for performing finalization.
+Close the worker cleanly (not "abort"). If it is also called this method, it is sent `close` message to the worker before actually closing. You may bind it for performing finalization.
 ```javascript
 var worker = new WorkerFrame(function () {
-    self.on('close', function () {
+    self.bind('close', function () {
         console.log('I will be shut down soon!');
     });
 });
@@ -111,42 +110,42 @@ worker.close();
 ```
 ## Worker Context
 The following functions are able to use only in worker context.
-### `self.message(type, data[, transferList])`
+### `self.emit(type[, data[, transferList]])`
+Send a message to subscribers from worker.
 ```javascript
 var worker = new WorkerFrame(function () {
-    self.message('say', 'hello');
+    self.emit('say', 'Hello');
+});
+
+worker.on('say', function (data) {
+    console.log(data + ', John!');  // Hello, John!
+});
+worker.on('say', function (data) {
+    console.log(data + ', Mary!');  // Hello, Mary!
 });
 ```
-### `self.on(type, handler)`
+### `self.bind(channel, handler(data[, success[, failure]]))`
 ```javascript
 var worker = new WorkerFrame(function () {
-    self.on('add', function (data) {
-        self.message('answer', data[0] + data[1]);
+    self.bind('add', function (data) {
+        self.emit('answer', data[0] + data[1]);
     });
 });
 ```
 ```javascript
 var worker = new WorkerFrame(function () {
-    self.on('add', function (data, success, failure) {
+    self.bind('add', function (data, success, failure) {
         success(data[0] + data[1]);
     });
 });
 ```
-### `self.off(type, handler)`
+### `self.unbind(channel)`
 ```javascript
 var worker = new WorkerFrame(function () {
-    var add = self.on('add', function (data) {
-        self.message('answer', data[0] + data[1]);
+    self.bind('add', function (data) {
+        self.emit('answer', data[0] + data[1]);
     });
-    self.off('add', add);
-});
-```
-### `self.one(type, handler)`
-```javascript
-var worker = new WorkerFrame(function () {
-    self.one('add', function (data) {
-        self.message('answer', data[0] + data[1]);
-    });
+    self.unbind('add');
 });
 ```
 ### `console.log(msg)`
@@ -157,7 +156,7 @@ var worker = new WorkerFrame(function () {
 ```
 ## Caveats
 ### `self.importScripts(path[, path, ...])`
-If import some scripts via `self.importScripts` in this framework, they have to be given absolute path. As this framework has the `origin` property, make the absolute path with using it.
+If import some scripts via `self.importScripts` in this framework, they have to be given absolute path. As this framework has an `origin` property, make the absolute path with using it.
 ```javascript
 var worker = new WorkerFrame(function () {
     // succeed
